@@ -43,10 +43,8 @@ def lukas_kanade(gradx: np.matrix, grady: np.matrix, gradt: np.matrix, size: int
     b: np.matrix = np.matrix([[sumxt], [sumyt]])
 
     # Result with closed formula
-    """u = -(-sumy * sumxt + sumxy * sumyt) / (sumx * sumy - sumxy * sumxy)
-    v = -(sumxy * sumxt - sumx * sumyt) / (sumx * sumy - sumxy * sumxy)"""
-    u = None
-    v = None
+    u = -(-sumy * sumxt + sumxy * sumyt) / (sumx * sumy - sumxy * sumxy)
+    v = -(sumxy * sumxt - sumx * sumyt) / (sumx * sumy - sumxy * sumxy)
 
     return A, b, [u, v]
 
@@ -55,10 +53,10 @@ def horn_schunck(gradx: np.matrix, grady: np.matrix, gradt: np.matrix, landa: fl
                  shape: (int, int)) -> (np.array, np.array):
 
     u = np.zeros(gradx.shape)
-    u_prev = np.ones(gradx.shape) * 1e-2
+    u_prev = np.ones(gradx.shape) * 1e-6
 
     v = np.zeros(gradx.shape)
-    v_prev = np.ones(gradx.shape) * 1e-2
+    v_prev = np.ones(gradx.shape) * 1e-6
 
     avg = shape[0]*shape[1]
     avg_kernel = np.array([1/avg]*avg, float).reshape(shape)
@@ -72,9 +70,6 @@ def horn_schunck(gradx: np.matrix, grady: np.matrix, gradt: np.matrix, landa: fl
         u_prev = convolve(u, avg_kernel)
         v_prev = convolve(v, avg_kernel)
 
-        """u_average = u[y - desp:y + desp + 1, x - desp: x + desp + 1].mean()
-        v_average = v[y - desp:y + desp + 1, x - desp: x + desp + 1].mean()"""
-
     return u, v
 
 
@@ -84,16 +79,15 @@ def draw_vector(im: np.array, point: (int, int), sol: (float, float), color: str
 
 
 def run_lukas_kanade(gradx: np.array, grady: np.array, gradt: np.array, size: int, im: np.array, option: bool) -> None:
-    for i in range(size, gradx.shape[1] - size):
-        for j in range(size, gradx.shape[0] - size):
-            sol = None
-            A, b, formula = lukas_kanade(gradx, grady, gradt, size, j, i)
-            if (i % 10) == 0 and (j % 10) == 0:
-                if option:
+    for i in range(size//2, gradx.shape[1] - size//2 + 1):
+        for j in range(size//2, gradx.shape[0] - size//2 + 1):
+            A, b, sol = lukas_kanade(gradx, grady, gradt, size, j, i)
+            if (i % 25) == 0 and (j % 25) == 0:
+                """if option:
                     sol: np.array = np.array(np.linalg.pinv(A) @ b)
                 else:
                     if np.linalg.det(A) != 0:
-                        sol: np.array = np.array(np.linalg.inv(A) @ b)
+                        sol: np.array = np.array(np.linalg.inv(A) @ b)"""
                 point = (j, i)
                 color = "blue"
                 if sol is not None and np.linalg.norm(sol) > 0.75:
@@ -104,23 +98,23 @@ def run_horn_schunck(gradx: np.array, grady: np.array, gradt: np.array, shape: (
     u, v = horn_schunck(gradx, grady, gradt, 10, 300, shape)
     for i in range(100, 400):
         for j in range(0, 400):
-            if (i % 10) == 0 and (j % 10) == 0:
-                if np.linalg.norm((v[i, j], u[i, j])) > 0.075:
-                    # print(f"Norma: {np.linalg.norm((v[i, j], u[i, j]))} \n Vector: {u[i, j]}, {v[i, j]}")
+            if (i % 25) == 0 and (j % 25) == 0:
+                if np.linalg.norm((v[i, j], u[i, j])) > 0.5:
+                    print(f"Norma: {np.linalg.norm((v[i, j], u[i, j]))} \n Vector: {u[i, j]}, {v[i, j]}")
                     draw_vector(im, (j, i), (u[i, j], v[i, j]), "red")
 
 
 def main():
-    im1, im2 = generate_image((400, 400))
+    # im1, im2 = generate_image((400, 400))
 
-    """im1 = np.float32(cv2.imread("images/car1.jpg"))
+    im1 = np.float32(cv2.imread("images/car1.jpg"))
     im2 = np.float32(cv2.imread("images/car2.jpg"))
 
     im1 = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
-    im2 = cv2.cvtColor(im2, cv2.COLOR_BGR2GRAY)"""
+    im2 = cv2.cvtColor(im2, cv2.COLOR_BGR2GRAY)
 
-    im1 = np.float32(cv2.GaussianBlur(im1, (9, 9), 0))
-    im2 = np.float32(cv2.GaussianBlur(im2, (9, 9), 0))
+    im1 = np.float32(cv2.GaussianBlur(im1, (5, 5), 0))
+    im2 = np.float32(cv2.GaussianBlur(im2, (5, 5), 0))
 
     gradx1: np.array = cv2.Sobel(im1, cv2.CV_64F, dx=1, dy=0, ksize=3)
     grady1: np.array = cv2.Sobel(im1, cv2.CV_64F, dx=0, dy=1, ksize=3)
@@ -133,25 +127,25 @@ def main():
     gradt: np.array = np.float32(im2 - im1)
 
     # LUKAS-KANADE CON VENTANA 3x3 pinv
-    print("Running Lukas-Kanade with pinv...")
+    """print("Running Lukas-Kanade with formula...")
 
-    size: int = 11
+    size: int = 37
     option: bool = True
 
     t0 = time.time()
     run_lukas_kanade(gradx, grady, gradt, size, im2, option)
     t1 = time.time() - t0
 
-    print(f"Time for LK pinv 3x3: {t1}")
+    print(f"Time for LK formula 3x3: {t1}")"""
 
     # HORN-SCHUNCK con ventana 7x7
-    """print("Running Horn-Schunck...")
+    print("Running Horn-Schunck...")
     
     t0 = time.time()
-    run_horn_schunck(gradx, grady, gradt, (3, 3), im2)
+    run_horn_schunck(gradx, grady, gradt, (5, 5), im2)
     t1 = time.time() - t0
     
-    print(f"Time for HS 3x3: {t1}")"""
+    print(f"Time for HS 3x3: {t1}")
 
     plt.show()
 
