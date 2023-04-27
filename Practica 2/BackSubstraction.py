@@ -8,6 +8,12 @@ class BackSubstraction:
         self.__background: np.array = np.array(cv2.imread(self.__path + "1.jpg"), dtype=np.float32)
 
     def substract(self, im2: str) -> np.array:
+        """
+        This method substracts the background from the foreground
+
+        @param im2:
+        @return foreground:
+        """
         fg = cv2.imread(self.__path + im2)
 
         fg = np.array(fg, dtype=np.float32)
